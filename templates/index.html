@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>주식 분석 앱</title>
+</head>
+<body style="font-family: sans-serif; padding: 20px;">
+    <h2>📈 주식 지지/저항 분석</h2>
+    <form method="POST">
+        <input type="text" name="ticker" placeholder="종목코드 (예: 005930.KS)" required>
+        <div style="margin: 10px 0;">
+            <button name="period" value="5d">5일 (1시간봉)</button>
+            <button name="period" value="1mo">1개월</button>
+            <button name="period" value="3mo">3개월</button>
+        </div>
+        <button type="submit">분석하기</button>
+    </form>
+
+    {% if data %}
+        <hr>
+        <h3>분석 결과</h3>
+        <p style="color:red">2차 저항(R2): {{ data.R2 }}</p>
+        <p style="color:salmon">1차 저항(R1): {{ data.R1 }}</p>
+        <p style="color:orange">기준점(P): {{ data.P }}</p>
+        <p style="color:skyblue">1차 지지(S1): {{ data.S1 }}</p>
+        <p style="color:blue">2차 지지(S2): {{ data.S2 }}</p>
+    {% endif %}
+
+    {% if chart %}
+        <hr>
+        <div style="width: 100%; height: 500px; touch-action: auto;">
+            {{ chart | safe }}
+        </div>
+    {% endif %}
+</body>
+</html>
