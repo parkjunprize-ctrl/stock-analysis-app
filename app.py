@@ -1,3 +1,10 @@
+import os
+# ... (다른 import 문들)
+
+app = Flask(__name__)
+
+# [테스트용 로그 강제 출력]
+print("--- 서버가 시작되었습니다! ---")
 from flask import Flask, render_template, request
 import yfinance as yf
 import plotly.graph_objects as go
