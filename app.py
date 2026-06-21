@@ -59,18 +59,24 @@ def index():
     chart_html = None
     
     if request.method == 'POST':
-        hist, levels = get_advanced_analysis(ticker, period)
-        if hist is not None and levels is not None:
-            # "알림" 키가 있을 경우를 대비한 체크
-            if "알림" not in levels:
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='Price'))
+        try:
+            # 기존 함수를 호출하되, 에러 발생 시를 대비
+            hist, levels = get_advanced_analysis(ticker, period)
+            
+# 지지/저항선 처리 (안전하게 수정됨)
+            if levels and isinstance(levels, dict):
                 for name, val in levels.items():
                     if '저항' in name or '지지' in name:
                         try:
-                            fig.add_hline(y=float(val.replace('$','')), line_dash="dash", annotation_text=name)
-                        except: continue
+                                # 문자열에서 $ 제거 후 숫자 변환 시도
+                            clean_val = str(val).replace('$', '')
+                            fig.add_hline(y=float(clean_val), line_dash="dash", annotation_text=name)
+                        except (ValueError, TypeError):
+                                # 숫자가 아니면 그냥 넘어감 (서버가 죽지 않음)
+                            continue
                 chart_html = pio.to_html(fig, full_html=False)
+        except Exception as e:
+            print(f"DEBUG ERROR: {e}") # 로그에 에러를 찍어서 확인하게 함
             
     return render_template('index.html', data=levels, chart=chart_html, ticker=ticker)
 
