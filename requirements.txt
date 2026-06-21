@@ -1,7 +1,7 @@
-flask
+Flask
+gunicorn
 yfinance
 pandas
 numpy
 scipy
 plotly
-gunicorn
