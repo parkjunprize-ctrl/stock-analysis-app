@@ -13,28 +13,30 @@ def get_analysis_data(ticker, period):
     if df is None or df.empty:
         return None, None
         
-    # 1. Swing High/Low 계산 (단기/중기 매물대)
-    df['High20'] = df['High'].rolling(window=20).max()
-    df['Low20'] = df['Low'].rolling(window=20).min()
-    df['High60'] = df['High'].rolling(window=60).max()
-    df['Low60'] = df['Low'].rolling(window=60).min()
+    current = df['Close'].iloc[-1]
     
-    # 2. VWAP 계산 (거래량 가중 평균 가격)
-    df['VWAP'] = (df['Close'] * df['Volume']).cumsum() / df['Volume'].cumsum()
+    # 지지/저항 계산
+    r2 = df['High'].rolling(60).max().iloc[-1]
+    r1 = df['High'].rolling(20).max().iloc[-1]
+    vwap = (df['Close'] * df['Volume']).sum() / df['Volume'].sum()
+    s1 = df['Low'].rolling(20).min().iloc[-1]
+    s2 = df['Low'].rolling(60).min().iloc[-1]
     
-    # 마지막 데이터 기준 지표 추출
-    r2 = df['High60'].iloc[-1]
-    r1 = df['High20'].iloc[-1]
-    vwap = df['VWAP'].iloc[-1]
-    s1 = df['Low20'].iloc[-1]
-    s2 = df['Low60'].iloc[-1]
-    
+    # 매매 전략 로직
+    signal = ""
+    if current <= s1 * 1.01: # 1차 지지선 근처
+        signal = "매수 고려 (1차 지지선 반등 확인)"
+    elif current >= r1 * 0.99: # 1차 저항선 근처
+        signal = "매도 고려 (1차 저항선 돌파 실패 시)"
+    else:
+        signal = "관망 (추세 확인 중)"
+
     levels = {
         "2차 저항(R2)": r2, "1차 저항(R1)": r1,
-        "VWAP(중요선)": vwap, "1차 지지(S1)": s1, "2차 지지(S2)": s2
+        "VWAP": vwap, "1차 지지(S1)": s1, "2차 지지(S2)": s2,
+        "매매전략": signal
     }
     return df, levels
-
 def get_chart_html(df, levels, ticker):
     fig = go.Figure()
     

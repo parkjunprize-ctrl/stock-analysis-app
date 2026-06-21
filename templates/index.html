@@ -17,13 +17,12 @@
     </form>
 
     {% if data %}
-        <hr>
-        <h3>분석 결과</h3>
-        <p style="color:red">2차 저항(R2): {{ data.R2 }}</p>
-        <p style="color:salmon">1차 저항(R1): {{ data.R1 }}</p>
-        <p style="color:orange">기준점(P): {{ data.P }}</p>
-        <p style="color:skyblue">1차 지지(S1): {{ data.S1 }}</p>
-        <p style="color:blue">2차 지지(S2): {{ data.S2 }}</p>
+      <div style="background: #f9f9f9; padding: 15px; border-radius: 10px;">
+        <h3>분석 결과 및 매매 전략</h3>
+        {% for key, value in data.items() %}
+          <p><strong>{{ key }}:</strong> {{ value }}</p>
+        {% endfor %}
+      </div>
     {% endif %}
 
     {% if chart %}
