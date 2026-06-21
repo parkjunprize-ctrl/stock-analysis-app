@@ -17,12 +17,14 @@
     </form>
 
     {% if data %}
-      <div style="background: #f9f9f9; padding: 15px; border-radius: 10px;">
-        <h3>분석 결과 및 매매 전략</h3>
-        {% for key, value in data.items() %}
-          <p><strong>{{ key }}:</strong> {{ value }}</p>
-        {% endfor %}
-      </div>
+        <div class="analysis-results">
+            <h3>투자 분석 결과 ({{ ticker }})</h3>
+            <ul>
+                {% for key, value in data.items() %}
+                    <li><strong>{{ key }}:</strong> {{ value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
     {% endif %}
 
     {% if chart %}
