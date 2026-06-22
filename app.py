@@ -4,11 +4,18 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 from scipy.signal import argrelextrema
+import time
+from functools import lru_cache
 
+# 1시간(3600초) 동안 동일한 ticker/period 요청은 야후에 가지 않고 저장된 값을 사용
+@lru_cache(maxsize=32)
+def get_cached_analysis(ticker, period):
+    return get_advanced_analysis(ticker, period)
 app = Flask(__name__)
 
 def get_advanced_analysis(ticker, period):
-    stock = yf.Ticker(ticker)
+    stock = yf.Ticker(ticker, session=None)
+    yf.set_tz_cache_location(None)
     hist = stock.history(period=period)
     
     if hist.empty or len(hist) < 5: return None, None # 데이터가 너무 적으면 리턴
@@ -60,10 +67,12 @@ def index():
     
     if request.method == 'POST':
         try:
-            # 기존 함수를 호출하되, 에러 발생 시를 대비
-            hist, levels = get_advanced_analysis(ticker, period)
+            # 수정 전: hist, levels = get_advanced_analysis(ticker, period)
+            # 수정 후: 이제 캐시된 함수를 사용합니다!
+            hist, levels = get_cached_analysis(ticker, period)
             
             if hist is not None and not hist.empty:
+                # ... (이하 동일)
                 fig = go.Figure()
                 fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='Price'))
                 # 지지/저항선 처리
