@@ -1,89 +1,61 @@
+import os
 from flask import Flask, render_template, request
-import yfinance as yf
-import numpy as np
+from alpha_vantage.timeseries import TimeSeries
 import plotly.graph_objects as go
 import plotly.io as pio
+import numpy as np
 from scipy.signal import argrelextrema
-import time
-from functools import lru_cache
 
-# 1시간(3600초) 동안 동일한 ticker/period 요청은 야후에 가지 않고 저장된 값을 사용
-@lru_cache(maxsize=32)
-def get_cached_analysis(ticker, period):
-    return get_advanced_analysis(ticker, period)
 app = Flask(__name__)
+API_KEY = os.environ.get('ALPHA_VANTAGE_API_KEY', 'UITBLFWQX5DDBTXF')
 
-def get_advanced_analysis(ticker, period):
-    stock = yf.Ticker(ticker)
-    hist = stock.history(period=period)
+def get_analysis(ticker):
+    ts = TimeSeries(key=API_KEY, output_format='pandas')
+    hist, _ = ts.get_daily(symbol=ticker, outputsize='compact')
+    hist.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
     
-    if hist.empty or len(hist) < 5: return None, None # 데이터가 너무 적으면 리턴
-    
-    info = stock.info
-    price = info.get('currentPrice') or hist['Close'].iloc[-1]
-    eps = info.get('forwardEps') or 0
-    fair_value = eps * 18
-    
-    order = 1 if period == "5d" else 3
+    # 지지/저항선 계산 로직 (기존 코드와 동일)
+    order = 3
     max_idx = argrelextrema(hist['High'].values, np.greater_equal, order=order)[0]
     min_idx = argrelextrema(hist['Low'].values, np.less_equal, order=order)[0]
     
     recent_max = sorted(list(set(hist['High'].iloc[max_idx].values)), reverse=True)
     recent_min = sorted(list(set(hist['Low'].iloc[min_idx].values)))
     
-    # [핵심 수정] 데이터가 충분하지 않을 때의 방어 로직
-    if len(recent_max) < 2 or len(recent_min) < 2:
-        return hist, {"알림": "데이터 부족으로 지지/저항선 산출 불가"}
+    if len(recent_max) < 2 or len(recent_min) < 2: return hist, None
 
     r2, r1 = recent_max[0], recent_max[1]
     s1, s2 = recent_min[1], recent_min[0]
     
-    buy_1 = s1 * 1.01
-    buy_2 = s2 * 1.01
-    sell_1 = r1 * 0.99
-    sell_2 = r2 * 0.99
-    
     levels = {
-        "적정가": f"${fair_value:.2f}",
-        "2차 매도": f"${sell_2:.2f}",
-        "1차 매도": f"${sell_1:.2f}",
-        "1차 매수": f"${buy_1:.2f}",
-        "2차 매수": f"${buy_2:.2f}",
-        "2차 저항선": f"${r2:.2f}",
-        "1차 저항선": f"${r1:.2f}",
-        "1차 지지선": f"${s1:.2f}",
-        "2차 지지선": f"${s2:.2f}"
+        "2차 매도": f"${r1 * 0.99:.2f}", "1차 매도": f"${r2 * 0.99:.2f}",
+        "1차 매수": f"${s1 * 1.01:.2f}", "2차 매수": f"${s2 * 1.01:.2f}",
+        "2차 저항": f"${r2:.2f}", "1차 저항": f"${r1:.2f}",
+        "1차 지지": f"${s1:.2f}", "2차 지지": f"${s2:.2f}"
     }
     return hist, levels
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
     ticker = request.form.get('ticker', 'AAPL')
-    period = request.form.get('period', '1mo') 
-    
-    hist, levels = None, None
-    chart_html = None
+    levels, chart_html = None, None
     
     if request.method == 'POST':
         try:
-            # 수정 전: hist, levels = get_advanced_analysis(ticker, period)
-            # 수정 후: 이제 캐시된 함수를 사용합니다!
-            hist, levels = get_cached_analysis(ticker, period)
+            hist, levels = get_analysis(ticker)
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='Price'))
             
-            if hist is not None and not hist.empty:
-                # ... (이하 동일)
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=hist.index, y=hist['Close'], name='Price'))
-                # 지지/저항선 처리
-                if levels:
-                    for name, val in levels.items():
-                        if '저항' in name or '지지' in name:
-                            fig.add_hline(y=float(val.replace('$','')), line_dash="dash", annotation_text=name)
-                chart_html = pio.to_html(fig, full_html=False)
+            # 지지/저항선 차트 표시
+            if levels:
+                for name, val in levels.items():
+                    if '저항' in name or '지지' in name:
+                        fig.add_hline(y=float(val.replace('$','')), line_dash="dash", annotation_text=name)
+            chart_html = pio.to_html(fig, full_html=False)
         except Exception as e:
-            print(f"DEBUG ERROR: {e}") # 로그에 에러를 찍어서 확인하게 함
+            print(f"에러: {e}")
             
     return render_template('index.html', data=levels, chart=chart_html, ticker=ticker)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
