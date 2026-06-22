@@ -14,8 +14,7 @@ def get_cached_analysis(ticker, period):
 app = Flask(__name__)
 
 def get_advanced_analysis(ticker, period):
-    stock = yf.Ticker(ticker, session=None)
-    yf.set_tz_cache_location(None)
+    stock = yf.Ticker(ticker)
     hist = stock.history(period=period)
     
     if hist.empty or len(hist) < 5: return None, None # 데이터가 너무 적으면 리턴
