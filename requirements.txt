@@ -1,7 +1,7 @@
-Flask
-gunicorn
-yfinance
+flask
+alpha_vantage
 pandas
-numpy
-scipy
 plotly
+scipy
+numpy
+gunicorn
